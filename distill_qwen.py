@@ -189,6 +189,17 @@ def format_prompt_completion(example: Dict[str, Any]) -> Dict[str, str]:
     return {"text": text}
 
 
+def format_messages(example: Dict[str, Any]) -> Dict[str, str]:
+    """Format standard conversational messages (e.g., Aurora-Alpha) into ChatML."""
+    messages = example.get("messages", [])
+    text = ""
+    for msg in messages:
+        role = msg.get("role", "")
+        content = msg.get("content", "").strip()
+        text += f"<|im_start|>{role}\n{content}<|im_end|>\n"
+    return {"text": text.strip()}
+
+
 def prepare_dataset(config: DistillConfig, tokenizer: AutoTokenizer):
     """Load, format, and tokenize single or multiple datasets."""
     dataset_names = [d.strip() for d in config.dataset_name.split(",")]
@@ -205,7 +216,10 @@ def prepare_dataset(config: DistillConfig, tokenizer: AutoTokenizer):
             ds = load_dataset(name, split="train")
 
         # Auto-detect format and apply formatting
-        if "problem" in ds.column_names and "solution" in ds.column_names:
+        if "messages" in ds.column_names:
+            logger.info(f"[{name}] Detected Messages format → formatting as ChatML...")
+            ds = ds.map(format_messages, remove_columns=ds.column_names)
+        elif "problem" in ds.column_names and "solution" in ds.column_names:
             logger.info(f"[{name}] Detected MATH format → formatting as ChatML...")
             ds = ds.map(format_math, remove_columns=ds.column_names)
         elif "prompt" in ds.column_names and "completion" in ds.column_names:
