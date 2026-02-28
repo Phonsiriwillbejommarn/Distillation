@@ -41,7 +41,7 @@ save_steps: 100
 save_total_limit: 5
 report_to: "wandb"                    # "wandb" or "tensorboard" or "none"
 push_to_hub: true
-hub_model_id: "Phonsiri/Qwen2.5-3B-Distilled"
+hub_model_id: "Phonsiri/Qwen2.5-3B-Math-Distilled"
 
 # --- SFT Phase (sft_qwen.py) ---
 sft:
