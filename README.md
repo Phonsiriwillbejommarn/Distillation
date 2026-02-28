@@ -1,144 +1,179 @@
 # Knowledge Distillation: Qwen2.5-32B-Instruct → Qwen2.5-3B
 
-ถ่ายทอดความรู้ (Knowledge Distillation) จาก **Qwen2.5-32B-Instruct** (Teacher) สู่ **Qwen2.5-3B** (Student) ด้วย 2 แนวทาง:
+ถ่ายทอดความรู้จาก **Qwen2.5-32B-Instruct** (Teacher) สู่ **Qwen2.5-3B** (Student)
 
-| Approach | Script | Memory | Quality |
-|----------|--------|--------|---------|
-| **Logit-based** | `distill_qwen.py` | ~24 GB VRAM | ⭐⭐⭐ Higher |
-| **Response-based** | `generate_teacher_data.py` | ~18 GB VRAM | ⭐⭐ Good |
+## Pipeline
+
+```
+Phase 1: SFT (Full Fine-Tuning)     →  Phase 2: Logit Distillation (Full)
+         Qwen2.5-3B base                       SFT checkpoint + Teacher 32B
+         Opus Reasoning 3K                     MATH 12.5K
+         ~30-45 min (H100)                     ~3-4 hrs (H100)
+```
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
-### 1. Install Dependencies
+### 1. ติดตั้ง Dependencies
 
 ```bash
+git clone https://github.com/Phonsiriwillbejommarn/Distillation.git
+cd Distillation
 pip install -r requirements.txt
 ```
 
-### 2. Option A: Logit-Based Distillation (Recommended)
+### 2. ตั้งค่า API Keys
 
-The student learns to match the teacher's full probability distribution via KL-divergence loss.
+แก้ไขใน **ทั้ง 2 ไฟล์** (`sft_qwen.py` และ `distill_qwen.py`):
 
-```bash
-# Default config
-python distill_qwen.py --config distill_config.yaml
-
-# Custom settings
-python distill_qwen.py \
-    --alpha 0.7 \
-    --temperature 3.0 \
-    --learning_rate 1e-5 \
-    --num_train_epochs 5 \
-    --per_device_train_batch_size 1
-
-# Quick test (1 step)
-python distill_qwen.py --max_steps 1
+```python
+MY_WANDB_KEY = "ใส่_wandb_key_จริง"
+MY_HF_TOKEN = "ใส่_hf_token_จริง"
 ```
 
-### 3. Option B: Response-Based Distillation
+### 3. Phase 1: SFT (Supervised Fine-Tuning)
 
-Step 1: Generate teacher responses offline:
+สอนโมเดลพื้นฐานให้ทำ reasoning ด้วย dataset `nohurry/Opus-4.6-Reasoning-3000x-filtered`
 
 ```bash
-python generate_teacher_data.py --config distill_config.yaml
-
-# With sample limit (for testing)
-python generate_teacher_data.py --max_samples 100
+python sft_qwen.py --config distill_config.yaml
 ```
 
-Step 2: Fine-tune the student on teacher data:
+โมเดล SFT จะถูกเซฟที่ `./sft_output/` และ push ไปที่ `Phonsiri/Qwen2.5-3B-SFT-Reasoning`
+
+### 4. Phase 2: Knowledge Distillation
+
+ถ่ายทอดความรู้จาก Teacher (32B) สู่ Student (SFT checkpoint) ด้วย dataset `rasbt/math_full_minus_math500`
 
 ```bash
 python distill_qwen.py \
-    --dataset_name ./teacher_responses.jsonl \
-    --alpha 0.0
+    --student_model ./sft_output \
+    --config distill_config.yaml
 ```
 
-> Setting `--alpha 0.0` disables KL-divergence loss → pure SFT on teacher outputs.
+โมเดลสุดท้ายจะถูกเซฟที่ `./distill_output/` และ push ไปที่ `Phonsiri/Qwen2.5-3B-Distilled`
 
 ---
 
-## Configuration
+## ⏸️ Resume จาก Checkpoint
 
-All settings are in `distill_config.yaml`. Key parameters:
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `alpha` | `0.5` | Weight for KL-div loss (0 = pure SFT, 1 = pure distillation) |
-| `temperature` | `2.0` | Softmax temperature (higher = softer distributions) |
-| `use_lora` | `true` | Use LoRA adapters for student |
-| `lora_r` | `64` | LoRA rank |
-| `teacher_load_in_4bit` | `true` | Quantize teacher to 4-bit |
-| `per_device_train_batch_size` | `2` | Batch size per GPU |
-| `gradient_accumulation_steps` | `8` | Effective batch = batch_size × grad_accum |
-
----
-
-## Loss Function
-
-```
-L_total = α × KL(teacher_soft || student_soft) × T² + (1 - α) × CE(labels, student)
-```
-
-Where:
-- `teacher_soft = softmax(teacher_logits / T)`
-- `student_soft = softmax(student_logits / T)`
-- `T` = temperature (default: 2.0)
-- `α` = distillation weight (default: 0.5)
-
----
-
-## Custom Dataset
-
-To use your own dataset, set `dataset_name` to a local JSONL file:
-
-```yaml
-# distill_config.yaml
-dataset_name: "./my_data.jsonl"
-```
-
-Expected JSONL format (Alpaca-style):
-```json
-{"instruction": "Translate to Thai", "input": "Hello", "output": "สวัสดี"}
-```
-
-Or pre-formatted text:
-```json
-{"text": "### Instruction:\nTranslate to Thai\n\n### Input:\nHello\n\n### Response:\nสวัสดี"}
-```
-
----
-
-## Multi-GPU
-
-Both scripts support multi-GPU via `accelerate`:
+ถ้าเทรนหยุดกลางคัน (GPU หมดเวลา, error, etc.):
 
 ```bash
-accelerate launch --num_processes 4 distill_qwen.py --config distill_config.yaml
+# Auto-resume จาก checkpoint ล่าสุด
+python distill_qwen.py \
+    --student_model ./sft_output \
+    --config distill_config.yaml \
+    --resume_from_checkpoint auto
+
+# หรือระบุ checkpoint ที่ต้องการ
+python distill_qwen.py \
+    --student_model ./sft_output \
+    --config distill_config.yaml \
+    --resume_from_checkpoint ./distill_output/checkpoint-500
+```
+
+> Checkpoint จะถูกเซฟทุก **100 steps** (เก็บไว้สูงสุด 5 ตัว)
+
+---
+
+## ⚙️ Configuration
+
+แก้ไขได้ที่ `distill_config.yaml`:
+
+| Parameter | Default | คำอธิบาย |
+|-----------|---------|---------|
+| `teacher_model` | `Qwen/Qwen2.5-32B-Instruct` | โมเดล Teacher |
+| `student_model` | `Qwen/Qwen2.5-3B` | โมเดล Student |
+| `alpha` | `0.5` | น้ำหนัก KL-div (0=SFT, 1=Distill เต็มที่) |
+| `temperature` | `2.0` | อุณหภูมิ softmax (สูง=กระจายมากขึ้น) |
+| `max_seq_length` | `8192` | ความยาวโทเคนสูงสุด |
+| `per_device_train_batch_size` | `4` | Batch size ต่อ GPU |
+| `gradient_accumulation_steps` | `4` | Effective batch = 4×4 = 16 |
+| `learning_rate` | `2e-5` | อัตราการเรียนรู้ |
+| `num_train_epochs` | `3` | จำนวน epochs |
+| `save_steps` | `100` | เซฟ checkpoint ทุกกี่ steps |
+| `teacher_load_in_4bit` | `true` | โหลด teacher แบบ 4-bit (ประหยัด VRAM) |
+
+ทุกค่าสามารถ override ผ่าน CLI ได้:
+
+```bash
+python distill_qwen.py --alpha 0.7 --temperature 3.0 --learning_rate 1e-5
 ```
 
 ---
 
-## Output
+## 📊 Loss Function
 
-After training, the model is saved to `./distill_output/` (configurable). To load:
+```
+L = α × KL(teacher_soft || student_soft) × T² + (1-α) × CE(labels, student)
+```
+
+- **KL-divergence**: Student เรียนรู้การกระจายความน่าจะเป็นของ teacher
+- **Cross-Entropy**: Student เรียนรู้จาก ground truth labels
+- **T² scaling**: ชดเชยการ scale ของ gradients จาก temperature
+
+---
+
+## 🔍 วิธีใช้งานโมเดลหลังเทรน
 
 ```python
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from peft import PeftModel
 
-# If LoRA was used
-base_model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-3B")
-model = PeftModel.from_pretrained(base_model, "./distill_output")
+model = AutoModelForCausalLM.from_pretrained("Phonsiri/Qwen2.5-3B-Distilled")
+tokenizer = AutoTokenizer.from_pretrained("Phonsiri/Qwen2.5-3B-Distilled")
 
-# Or merge LoRA into base
-model = model.merge_and_unload()
-model.save_pretrained("./qwen2.5-3b-distilled-merged")
+messages = [{"role": "user", "content": "What is the sum of 1+2+3+...+100?"}]
+text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+
+inputs = tokenizer(text, return_tensors="pt").to(model.device)
+outputs = model.generate(**inputs, max_new_tokens=2048)
+print(tokenizer.decode(outputs[0], skip_special_tokens=False))
 ```
 
-To push to HuggingFace Hub:
+Output จะมี format:
+```
+<|im_start|>assistant
+<think>
+[กระบวนการคิด]
+</think>
+
+[คำตอบสุดท้าย]
+<|im_end|>
+```
+
+---
+
+## 📁 โครงสร้างไฟล์
+
+```
+.
+├── distill_config.yaml       # Configuration ทั้งหมด
+├── sft_qwen.py               # Phase 1: SFT (Full Fine-Tuning)
+├── distill_qwen.py           # Phase 2: Logit Distillation (Full)
+├── generate_teacher_data.py  # (Optional) สร้าง teacher responses
+├── requirements.txt          # Dependencies
+└── README.md                 # เอกสารนี้
+```
+
+---
+
+## 💻 GPU Requirements
+
+| GPU | SFT | Distillation | รวม |
+|-----|-----|-------------|-----|
+| H100 85GB | ~30 min | ~3-4 hrs | ~4-5 hrs |
+| A100 80GB | ~1.5 hrs | ~8 hrs | ~10 hrs |
+| A100 40GB | ~2 hrs | ~12 hrs | ~14 hrs |
+| RTX 4090 24GB | ~3 hrs | ~18 hrs | ~21 hrs |
+
+> VRAM ขั้นต่ำ: ~38 GB (Teacher 32B 4-bit + Student 3B Full)
+
+---
+
+## 📈 Multi-GPU
+
 ```bash
-python distill_qwen.py --push_to_hub --hub_model_id your-name/qwen2.5-3b-distilled
+accelerate launch --num_processes 2 distill_qwen.py --config distill_config.yaml
 ```
