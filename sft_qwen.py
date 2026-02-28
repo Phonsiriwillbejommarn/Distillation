@@ -277,6 +277,9 @@ def main():
         report_to=config["report_to"],
         push_to_hub=config["push_to_hub"],
         hub_model_id=config["hub_model_id"] if config["hub_model_id"] else None,
+        max_length=config["max_seq_length"],
+        dataset_text_field="text",
+        packing=True,
         optim="adamw_torch",
         lr_scheduler_type="cosine",
     )
@@ -287,9 +290,6 @@ def main():
         args=sft_config,
         train_dataset=dataset,
         processing_class=tokenizer,
-        max_length=config["max_seq_length"],
-        dataset_text_field="text",
-        packing=True,
     )
 
     # --- Train ---
