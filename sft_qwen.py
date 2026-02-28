@@ -160,11 +160,14 @@ def load_sft_config(config_path: str, cli_args) -> Dict[str, Any]:
     if config_path and os.path.exists(config_path):
         with open(config_path, "r") as f:
             yaml_config = yaml.safe_load(f) or {}
-        # Map relevant keys
+
+        # Only read SFT-safe keys from top-level (skip distillation-specific ones)
+        skip_from_toplevel = {"hub_model_id", "push_to_hub", "output_dir", "dataset_name"}
         for key in defaults:
-            if key in yaml_config:
+            if key in yaml_config and key not in skip_from_toplevel:
                 defaults[key] = yaml_config[key]
-        # Also check sft-specific section
+
+        # SFT-specific section takes priority
         sft_section = yaml_config.get("sft", {})
         if sft_section:
             defaults.update(sft_section)
