@@ -476,7 +476,7 @@ def main():
             checkpoints = [
                 os.path.join(config.output_dir, d)
                 for d in os.listdir(config.output_dir)
-                if d.startswith("checkpoint-")
+                if d.startswith("checkpoint-") or d == "last-checkpoint"
             ] if os.path.isdir(config.output_dir) else []
             if checkpoints:
                 resume_checkpoint = max(checkpoints, key=os.path.getmtime)
