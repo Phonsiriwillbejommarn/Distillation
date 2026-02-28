@@ -279,7 +279,7 @@ def main():
         hub_model_id=config["hub_model_id"] if config["hub_model_id"] else None,
         max_length=config["max_seq_length"],
         dataset_text_field="text",
-        packing=True,
+        packing=False,  # Requires flash_attention_2; disabled for sdpa
         optim="adamw_torch",
         lr_scheduler_type="cosine",
     )
