@@ -10,7 +10,7 @@ student_model: "Qwen/Qwen2.5-3B"
 # --- Dataset ---
 dataset_name: "rasbt/math_full_minus_math500"  # HuggingFace dataset name or local path
 dataset_text_field: "text"             # Field name for text (used after formatting)
-max_seq_length: 8192                   # Maximum sequence length
+max_seq_length: 4096                   # Reduced for distillation (2 models in VRAM)
 
 # --- Distillation Hyperparameters ---
 alpha: 0.5                             # Weight for distillation loss (KL-div)
@@ -21,8 +21,8 @@ temperature: 2.0                       # Temperature for softening logits
 # --- Training Hyperparameters ---
 learning_rate: 2.0e-5
 num_train_epochs: 3
-per_device_train_batch_size: 4
-gradient_accumulation_steps: 4         # Effective batch size = 4 * 4 = 16
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 16        # Effective batch size = 1 * 16 = 16
 warmup_ratio: 0.1
 weight_decay: 0.01
 max_grad_norm: 1.0
