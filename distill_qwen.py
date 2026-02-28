@@ -23,7 +23,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import yaml
 from datasets import load_dataset
-from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
