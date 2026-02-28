@@ -37,7 +37,7 @@ teacher_bnb_4bit_quant_type: "nf4"
 # --- Output & Logging ---
 output_dir: "./distill_output"
 logging_steps: 10
-save_steps: 100
+save_steps: 25
 save_total_limit: 5
 report_to: "wandb"                    # "wandb" or "tensorboard" or "none"
 push_to_hub: true
