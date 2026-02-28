@@ -245,7 +245,7 @@ def main():
     model = AutoModelForCausalLM.from_pretrained(
         config["student_model"],
         device_map="auto",
-        torch_dtype=torch.bfloat16 if config["bf16"] else torch.float32,
+        dtype=torch.bfloat16 if config["bf16"] else torch.float32,
         trust_remote_code=True,
         attn_implementation="sdpa",
     )
@@ -287,7 +287,7 @@ def main():
         args=sft_config,
         train_dataset=dataset,
         processing_class=tokenizer,
-        max_seq_length=config["max_seq_length"],
+        max_length=config["max_seq_length"],
         dataset_text_field="text",
         packing=True,
     )

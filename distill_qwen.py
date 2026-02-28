@@ -248,14 +248,14 @@ def load_teacher(config: DistillConfig) -> AutoModelForCausalLM:
             config.teacher_model,
             quantization_config=bnb_config,
             device_map="auto",
-            torch_dtype=compute_dtype,
+            dtype=compute_dtype,
             trust_remote_code=True,
         )
     else:
         teacher = AutoModelForCausalLM.from_pretrained(
             config.teacher_model,
             device_map="auto",
-            torch_dtype=torch.bfloat16,
+            dtype=torch.bfloat16,
             trust_remote_code=True,
         )
 
@@ -275,7 +275,7 @@ def load_student(config: DistillConfig) -> AutoModelForCausalLM:
     student = AutoModelForCausalLM.from_pretrained(
         config.student_model,
         device_map="auto",
-        torch_dtype=torch.bfloat16 if config.bf16 else torch.float32,
+        dtype=torch.bfloat16 if config.bf16 else torch.float32,
         trust_remote_code=True,
     )
 
