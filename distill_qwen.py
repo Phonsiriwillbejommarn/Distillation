@@ -22,7 +22,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import yaml
-from datasets import load_dataset
+from datasets import concatenate_datasets, load_dataset
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -180,26 +180,52 @@ def format_math(example: Dict[str, Any]) -> Dict[str, str]:
     return {"text": text}
 
 
+def format_prompt_completion(example: Dict[str, Any]) -> Dict[str, str]:
+    """Format prompt/completion datasets (e.g., CodeAlpaca) into ChatML."""
+    text = (
+        f"<|im_start|>user\n{example.get('prompt', '').strip()}<|im_end|>\n"
+        f"<|im_start|>assistant\n{example.get('completion', '').strip()}<|im_end|>"
+    )
+    return {"text": text}
+
+
 def prepare_dataset(config: DistillConfig, tokenizer: AutoTokenizer):
-    """Load, format, and tokenize the dataset."""
-    logger.info(f"Loading dataset: {config.dataset_name}")
+    """Load, format, and tokenize single or multiple datasets."""
+    dataset_names = [d.strip() for d in config.dataset_name.split(",")]
+    all_datasets = []
 
-    if os.path.isfile(config.dataset_name) or os.path.isdir(config.dataset_name):
-        # Local dataset
-        if config.dataset_name.endswith(".jsonl"):
-            dataset = load_dataset("json", data_files=config.dataset_name, split="train")
+    for name in dataset_names:
+        logger.info(f"Loading dataset: {name}")
+        if os.path.isfile(name) or os.path.isdir(name):
+            if name.endswith(".jsonl"):
+                ds = load_dataset("json", data_files=name, split="train")
+            else:
+                ds = load_dataset(name, split="train")
         else:
-            dataset = load_dataset(config.dataset_name, split="train")
-    else:
-        dataset = load_dataset(config.dataset_name, split="train")
+            ds = load_dataset(name, split="train")
 
-    # Auto-detect format and apply formatting
-    if "problem" in dataset.column_names and "solution" in dataset.column_names:
-        logger.info("Detected MATH format (problem/solution) → formatting as ChatML...")
-        dataset = dataset.map(format_math, remove_columns=dataset.column_names)
-    elif "instruction" in dataset.column_names:
-        logger.info("Detected Alpaca format → formatting...")
-        dataset = dataset.map(format_alpaca, remove_columns=dataset.column_names)
+        # Auto-detect format and apply formatting
+        if "problem" in ds.column_names and "solution" in ds.column_names:
+            logger.info(f"[{name}] Detected MATH format → formatting as ChatML...")
+            ds = ds.map(format_math, remove_columns=ds.column_names)
+        elif "prompt" in ds.column_names and "completion" in ds.column_names:
+            logger.info(f"[{name}] Detected Prompt/Completion format → formatting as ChatML...")
+            ds = ds.map(format_prompt_completion, remove_columns=ds.column_names)
+        elif "instruction" in ds.column_names:
+            logger.info(f"[{name}] Detected Alpaca format → formatting as ChatML...")
+            ds = ds.map(format_alpaca, remove_columns=ds.column_names)
+        elif config.dataset_text_field in ds.column_names:
+            logger.info(f"[{name}] Using existing text column: {config.dataset_text_field}")
+        else:
+            logger.warning(f"[{name}] Unknown format with columns: {ds.column_names}. Hoping for best!")
+
+        all_datasets.append(ds)
+
+    if len(all_datasets) > 1:
+        logger.info(f"Concatenating {len(all_datasets)} datasets...")
+        dataset = concatenate_datasets(all_datasets)
+    else:
+        dataset = all_datasets[0]
 
     # Tokenize
     def tokenize_fn(examples):

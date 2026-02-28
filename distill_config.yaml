@@ -8,7 +8,7 @@ teacher_model: "Qwen/Qwen2.5-32B-Instruct"
 student_model: "Qwen/Qwen2.5-3B"
 
 # --- Dataset ---
-dataset_name: "rasbt/math_full_minus_math500"  # HuggingFace dataset name or local path
+dataset_name: "rasbt/math_full_minus_math500,TeichAI/Aurora-Alpha-15.5k,HuggingFaceH4/CodeAlpaca_20K"
 dataset_text_field: "text"             # Field name for text (used after formatting)
 max_seq_length: 8192                   # Maximum sequence length
 
