@@ -10,7 +10,7 @@ student_model: "Qwen/Qwen2.5-3B"
 # --- Dataset ---
 dataset_name: "rasbt/math_full_minus_math500"  # HuggingFace dataset name or local path
 dataset_text_field: "text"             # Field name for text (used after formatting)
-max_seq_length: 4096                   # Reduced for distillation (2 models in VRAM)
+max_seq_length: 8192                   # Maximum sequence length
 
 # --- Distillation Hyperparameters ---
 alpha: 0.5                             # Weight for distillation loss (KL-div)
