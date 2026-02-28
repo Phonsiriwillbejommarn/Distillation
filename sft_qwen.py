@@ -247,7 +247,7 @@ def main():
         device_map="auto",
         torch_dtype=torch.bfloat16 if config["bf16"] else torch.float32,
         trust_remote_code=True,
-        attn_implementation="flash_attention_2",
+        attn_implementation="sdpa",
     )
 
     # Enable gradient checkpointing
