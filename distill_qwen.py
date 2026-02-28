@@ -241,6 +241,9 @@ def prepare_dataset(config: DistillConfig, tokenizer: AutoTokenizer):
     else:
         dataset = all_datasets[0]
 
+    logger.info("Shuffling the final dataset...")
+    dataset = dataset.shuffle(seed=42)
+
     # Tokenize
     def tokenize_fn(examples):
         return tokenizer(
