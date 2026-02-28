@@ -171,8 +171,9 @@ def format_math(example: Dict[str, Any]) -> Dict[str, str]:
     if answer and answer not in solution:
         response += f"\n\nThe answer is $\\boxed{{{answer}}}$."
 
-    # Qwen2.5 ChatML format
+    # Qwen2.5 ChatML format with default system prompt
     text = (
+        "<|im_start|>system\nYou are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>\n"
         f"<|im_start|>user\n{problem}<|im_end|>\n"
         f"<|im_start|>assistant\n{response}<|im_end|>"
     )
@@ -183,6 +184,7 @@ def format_math(example: Dict[str, Any]) -> Dict[str, str]:
 def format_prompt_completion(example: Dict[str, Any]) -> Dict[str, str]:
     """Format prompt/completion datasets (e.g., CodeAlpaca) into ChatML."""
     text = (
+        "<|im_start|>system\nYou are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>\n"
         f"<|im_start|>user\n{example.get('prompt', '').strip()}<|im_end|>\n"
         f"<|im_start|>assistant\n{example.get('completion', '').strip()}<|im_end|>"
     )
@@ -192,7 +194,14 @@ def format_prompt_completion(example: Dict[str, Any]) -> Dict[str, str]:
 def format_messages(example: Dict[str, Any]) -> Dict[str, str]:
     """Format standard conversational messages (e.g., Aurora-Alpha) into ChatML."""
     messages = example.get("messages", [])
+    
+    # Check if a system prompt is already present
+    has_system = any(msg.get("role") == "system" for msg in messages)
     text = ""
+    
+    if not has_system:
+        text += "<|im_start|>system\nYou are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>\n"
+        
     for msg in messages:
         role = msg.get("role", "")
         content = msg.get("content", "").strip()

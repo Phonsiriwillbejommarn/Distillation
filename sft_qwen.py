@@ -94,6 +94,7 @@ def format_reasoning_example(example: Dict[str, Any]) -> Dict[str, str]:
 
     # Qwen2.5 ChatML format
     text = (
+        "<|im_start|>system\nYou are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>\n"
         f"<|im_start|>user\n{problem}<|im_end|>\n"
         f"<|im_start|>assistant\n{response}<|im_end|>"
     )
