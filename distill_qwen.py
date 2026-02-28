@@ -376,7 +376,6 @@ class DistillationTrainer(Trainer):
         labels = inputs.get("labels", None)
         if labels is not None:
             mask = (labels != -100)  # (B, seq_len)
-            # Flatten and select only valid tokens
             mask_flat = mask.view(-1)  # (B * seq_len)
             student_flat = student_logits_trimmed.view(-1, min_vocab)[mask_flat]  # (N, vocab)
             teacher_flat = teacher_logits_trimmed.view(-1, min_vocab)[mask_flat]  # (N, vocab)
@@ -384,9 +383,24 @@ class DistillationTrainer(Trainer):
             student_flat = student_logits_trimmed.view(-1, min_vocab)
             teacher_flat = teacher_logits_trimmed.view(-1, min_vocab)
 
-        student_log_probs = F.log_softmax(student_flat / T, dim=-1)
-        teacher_probs = F.softmax(teacher_flat / T, dim=-1)
-        kl_loss = F.kl_div(student_log_probs, teacher_probs, reduction="batchmean")
+        # Process in chunks to prevent OOM on massive batch/seq lengths (e.g. 4x8192)
+        chunk_size = 4096
+        total_tokens = student_flat.size(0)
+        kl_loss_sum = 0.0
+
+        for i in range(0, total_tokens, chunk_size):
+            s_chunk = student_flat[i : i + chunk_size]
+            t_chunk = teacher_flat[i : i + chunk_size]
+
+            s_log_probs = F.log_softmax(s_chunk / T, dim=-1)
+            t_probs = F.softmax(t_chunk / T, dim=-1)
+
+            # reduction="batchmean" divides by batch size (which is chunk size here)
+            # We use "sum" and divide by total_tokens later to get exact mathematical equivalence
+            chunk_kl = F.kl_div(s_log_probs, t_probs, reduction="sum")
+            kl_loss_sum += chunk_kl
+
+        kl_loss = kl_loss_sum / max(total_tokens, 1)
 
         # Scale by T^2 (standard distillation scaling)
         kl_loss = kl_loss * (T ** 2)
