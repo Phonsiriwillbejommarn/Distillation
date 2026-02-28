@@ -448,6 +448,8 @@ def main():
         report_to=config.report_to,
         push_to_hub=config.push_to_hub,
         hub_model_id=config.hub_model_id if config.hub_model_id else None,
+        hub_strategy="checkpoint",  # Push every checkpoint to HF Hub
+        save_strategy="steps",
         remove_unused_columns=False,
         dataloader_pin_memory=True,
         optim="adamw_torch",
