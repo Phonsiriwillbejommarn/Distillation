@@ -1,5 +1,5 @@
 import os
-from huggingface_hub import HfApi
+from huggingface_hub import HfApi, create_repo
 
 # Define repositories and path
 repo_id = "Phonsiri/Qwen2.5-3B-GRPO-Reasoning"
@@ -9,6 +9,14 @@ folder_path = "./grpo_output/checkpoint-10"
 print(f"Uploading {folder_path} to Hugging Face Hub: {repo_id}...")
 
 api = HfApi()
+
+# Create the repository if it doesn't exist
+try:
+    create_repo(repo_id, repo_type="model", exist_ok=True)
+    print(f"Verified/Created repository: {repo_id}")
+except Exception as e:
+    print(f"Note on repo creation: {e}")
+
 api.upload_folder(
     folder_path=folder_path,
     repo_id=repo_id,
