@@ -20,6 +20,7 @@ except Exception as e:
 api.upload_folder(
     folder_path=folder_path,
     repo_id=repo_id,
+    path_in_repo=os.path.basename(folder_path.rstrip("/")), # e.g. "checkpoint-10"
     repo_type="model",
 )
 
