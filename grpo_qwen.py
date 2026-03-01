@@ -142,6 +142,7 @@ def main():
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--push_to_hub", action="store_true", default=False)
     parser.add_argument("--hub_model_id", type=str, default="Phonsiri/Qwen2.5-3B-GRPO-Reasoning")
+    parser.add_argument("--resume_from_checkpoint", type=str, default=None, help="Path to checkpoint folder to resume from")
     args = parser.parse_args()
 
     logger.info("==================================================")
@@ -206,7 +207,7 @@ def main():
 
     # 5. Train
     logger.info("🚀 Starting GRPO Training...")
-    trainer.train()
+    trainer.train(resume_from_checkpoint=args.resume_from_checkpoint)
 
     # 6. Save
     logger.info(f"Saving final model to {args.output_dir}...")
