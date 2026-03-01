@@ -1,4 +1,4 @@
-# Knowledge Distillation: Qwen2.5-32B → Qwen2.5-3B
+# Knowledge Distillation: DeepSeek-R1-Distill-Qwen-32B → Qwen2.5-3B
 
 ถ่ายทอดความรู้จาก **Qwen2.5-32B-Instruct** (Teacher) สู่ **Qwen2.5-3B** (Student) ผ่าน 2 ขั้นตอน
 
