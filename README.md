@@ -22,6 +22,8 @@ git clone https://github.com/Phonsiriwillbejommarn/Distillation.git
 cd Distillation
 pip install -r requirements.txt
 ```
+pip uninstall -y wandb
+pip install wandb --upgrade
 
 ---
 
@@ -64,6 +66,16 @@ python distill_qwen.py \
     --student_model ./sft_output \
     --config distill_config.yaml
 ```
+# โหลด SFT Model ไว้ที่ folder ./sft_output
+python -c "from huggingface_hub import snapshot_download; snapshot_download('Phonsiri/Qwen2.5-3B-Distilled', local_dir='./sft_output')"
+
+# โหลด Checkpoint การ Distill ล่าสุด ไว้ที่ folder ./distill_output
+python -c "from huggingface_hub import snapshot_download; snapshot_download('Phonsiri/Qwen2.5-3B-Math-Distilled', local_dir='./distill_output')"
+# รันต่อจากเช็คพ้อยเดิม
+python distill_qwen.py \
+    --student_model ./sft_output \
+    --config distill_config.yaml \
+    --resume_from_checkpoint auto
 
 | รายละเอียด | ค่า |
 |-----------|-----|
@@ -116,7 +128,18 @@ messages = [{"role": "user", "content": "What is the sum of 1+2+3+...+100?"}]
 text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
 inputs = tokenizer(text, return_tensors="pt").to(model.device)
-outputs = model.generate(**inputs, max_new_tokens=2048)
+
+# กำหนดจุดป้ายบอกทางให้หยุด (สำคัญมากสำหรับ Base model ที่เปลี่ยนมาใช้ ChatML)
+terminators = [
+    tokenizer.eos_token_id,
+    tokenizer.convert_tokens_to_ids("<|im_end|>")
+]
+
+outputs = model.generate(
+    **inputs, 
+    max_new_tokens=2048,
+    eos_token_id=terminators
+)
 print(tokenizer.decode(outputs[0], skip_special_tokens=False))
 ```
 
