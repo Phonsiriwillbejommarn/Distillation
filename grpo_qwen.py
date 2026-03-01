@@ -135,8 +135,8 @@ def main():
     parser.add_argument("--dataset_name", type=str, default="AI-MO/NuminaMath-TIR", help="Hugging Face dataset name")
     parser.add_argument("--output_dir", type=str, default="./grpo_output", help="Where to save the model")
     parser.add_argument("--max_prompt_length", type=int, default=1024)
-    parser.add_argument("--max_completion_length", type=int, default=2048)
-    parser.add_argument("--num_generations", type=int, default=4, help="Number of completions to generate per prompt (G)")
+    parser.add_argument("--max_completion_length", type=int, default=4096, help="Increased for Reasoning")
+    parser.add_argument("--num_generations", type=int, default=8, help="Number of completions to generate per prompt (G)")
     parser.add_argument("--per_device_train_batch_size", type=int, default=1)
     parser.add_argument("--gradient_accumulation_steps", type=int, default=8)
     parser.add_argument("--learning_rate", type=float, default=1e-6, help="Smaller LR for RL")
@@ -167,11 +167,12 @@ def main():
         gradient_checkpointing=True,
         bf16=True,
         logging_steps=10,
-        save_steps=100,
+        save_steps=10,            # Changed from 100 to 10
         save_total_limit=3,
         report_to="wandb",
         push_to_hub=args.push_to_hub,
         hub_model_id=args.hub_model_id if args.push_to_hub else None,
+        hub_strategy="checkpoint", # Added: Push to hub at every save_steps
         # GRPO specific
         max_prompt_length=args.max_prompt_length,
         max_completion_length=args.max_completion_length,
